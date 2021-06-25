@@ -97,7 +97,7 @@ class LibSVMDataset(Dataset):
     """
     LibSVM Learning to Rank dataset.
     """
-    def __init__(self, X, y, query_ids, transform=None):
+    def __init__(self, X, y, query_ids, transform=None, n_features=None):
         """
         :param X: scipy sparse matrix containing features of the dataset of shape [dataset_size, features_dim]
         :param y: ndarray containing target labels of shape [dataset_size]
@@ -118,19 +118,20 @@ class LibSVMDataset(Dataset):
         logger.info("longest query had {} documents".format(self.longest_query_length))
 
         self.transform = transform
+        self.n_features = n_features
 
     @classmethod
-    def from_svm_file(cls, svm_file_path, transform=None):
+    def from_svm_file(cls, svm_file_path, transform=None, n_features=None):
         """
         Instantiate a LibSVMDataset from a LibSVM file path.
         :param svm_file_path: LibSVM file path
         :param transform: a callable defining an optional transformation called on the dataset
         :return: LibSVMDataset instantiated from a given file and with an optional transformation defined
         """
-        x, y, query_ids = load_svmlight_file(svm_file_path, query_id=True)
+        x, y, query_ids = load_svmlight_file(svm_file_path, query_id=True, n_features=n_features)
         logger.info("loaded dataset from {} and got x shape {}, y shape {} and query_ids shape {}".format(
             svm_file_path, x.shape, y.shape, query_ids.shape))
-        return cls(x, y, query_ids, transform)
+        return cls(x, y, query_ids, transform, n_features=x.shape[-1])
 
     def __len__(self):
         """
@@ -165,7 +166,7 @@ class LibSVMDataset(Dataset):
         return [batch_dim, document_dim, features_dim]
 
 
-def load_libsvm_role(input_path: str, role: str) -> LibSVMDataset:
+def load_libsvm_role(input_path: str, role: str, n_features=None) -> LibSVMDataset:
     """
     Helper function loading a LibSVMDataset of a specific role.
 
@@ -177,7 +178,7 @@ def load_libsvm_role(input_path: str, role: str) -> LibSVMDataset:
     path = os.path.join(input_path, "{}.txt".format(role))
     logger.info("will load {} data from {}".format(role, path))
     with open_local_or_gs(path, "rb") as input_stream:
-        ds = LibSVMDataset.from_svm_file(input_stream)
+        ds = LibSVMDataset.from_svm_file(input_stream, n_features=n_features)
     logger.info("{} DS shape: {}".format(role, ds.shape))
     return ds
 
@@ -206,12 +207,12 @@ def load_libsvm_dataset(input_path: str, slate_length: int, validation_ds_role: 
     """
     train_ds = load_libsvm_dataset_role("train", input_path, slate_length)
 
-    val_ds = load_libsvm_dataset_role(validation_ds_role, input_path, slate_length)
+    val_ds = load_libsvm_dataset_role(validation_ds_role, input_path, slate_length, n_features=train_ds.n_features)
 
     return train_ds, val_ds
 
 
-def load_libsvm_dataset_role(role: str, input_path: str, slate_length: int) -> LibSVMDataset:
+def load_libsvm_dataset_role(role: str, input_path: str, slate_length: int, n_features=None) -> LibSVMDataset:
     """
     Helper function loading a single role LibSVMDataset
     :param role: the role of the dataset - specifies file name and padding behaviour
@@ -219,7 +220,7 @@ def load_libsvm_dataset_role(role: str, input_path: str, slate_length: int) -> L
     :param slate_length: target slate length of the training dataset
     :return: loaded LibSVMDataset
     """
-    ds = load_libsvm_role(input_path, role)
+    ds = load_libsvm_role(input_path, role, n_features=n_features)
     if role == "train":
         ds.transform = transforms.Compose([FixLength(slate_length), ToTensor()])
     else:
