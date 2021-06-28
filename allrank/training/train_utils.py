@@ -135,6 +135,10 @@ def fit(epochs, model, loss_func, optimizer, scheduler, train_dl, valid_dl, conf
                     epoch, config.val_metric, early_stop.best_epoch, early_stop.best_value, current_val_metric_value
                 ))
             break
+            
+        if epoch % 10 == 0 and epoch != 0:
+            torch.save(model.state_dict(), os.path.join(output_dir, f"model-epoch-{epoch}.pkl"))
+
 
     torch.save(model.state_dict(), os.path.join(output_dir, "model.pkl"))
     tensorboard_summary_writer.close_all_writers()

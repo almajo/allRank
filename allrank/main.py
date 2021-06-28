@@ -30,6 +30,13 @@ def parse_args() -> Namespace:
 
     return parser.parse_args()
 
+def parse_args_test() -> Namespace:
+    parser = ArgumentParser("allRank")
+    parser.add_argument("model_path")
+    parser.add_argument("config_path")
+    parser.add_argument("test_file_dir")
+
+    return parser.parse_args()
 
 def run():
     # reproducibility
@@ -109,6 +116,38 @@ def run():
 
     assert_expected_metrics(result, config.expected_metrics)
 
+def predict():
+    from allrank.data.dataset_loading import load_libsvm_dataset_role
+    from allrank.models.model_utils import get_torch_device, CustomDataParallel, load_state_dict_from_file
+    from allrank.inference.inference_utils import rank_slates
+
+    args = parse_args_test()
+    model_path, config_path, test_file_dir = args.model_path, args.config_path, args.test_file_dir
+
+    # read config
+    config = Config.from_json(config_path)
+
+    # train_ds, val_ds
+    test_ds = load_libsvm_dataset_role("test", test_file_dir, config.data.slate_length, n_features=162)
+
+    # gpu support
+    dev = get_torch_device()
+
+    # instantiate model
+    model = make_model(n_features=test_ds.n_features, **asdict(config.model, recurse=False))
+    if torch.cuda.device_count() > 1:
+        model = CustomDataParallel(model)
+    model.load_state_dict(load_state_dict_from_file(model_path, dev))
+
+    model.to(dev)
+
+    ranked_slates = rank_slates({"test": test_ds}, model, config)
+
+    x, y = ranked_slates["test"]
+    print(x.shape, y.shape)
+
+    
 
 if __name__ == "__main__":
+    #run()
     run()
