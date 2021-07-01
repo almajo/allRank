@@ -21,7 +21,7 @@
       }
     },
     "data": {
-      "path": "/home/alex/projects/gcp_oghub_pls/experiments/experiments/ranking_transformer",
+      "path": "/home/jupyter/gcp_oghub_pls/experiments/experiments/ranking_transformer",
       "validation_ds_role": "val",
       "num_workers": 2,
       "batch_size": 64,
