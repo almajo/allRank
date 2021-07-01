@@ -137,6 +137,7 @@ def fit(epochs, model, loss_func, optimizer, scheduler, train_dl, valid_dl, conf
             break
             
         if epoch % 10 == 0 and epoch != 0:
+            logger.info("Saving temp model")
             torch.save(model.state_dict(), os.path.join(output_dir, f"model-epoch-{epoch}.pkl"))
 
 
